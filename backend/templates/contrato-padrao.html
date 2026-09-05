@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a1a; padding: 32px; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 24px; }
+  h2 { font-size: 14px; margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  td, th { border: 1px solid #ccc; padding: 6px 8px; text-align: left; font-size: 12px; }
+  .clausulas p { margin: 8px 0; text-align: justify; }
+  .assinaturas { margin-top: 48px; display: flex; justify-content: space-between; }
+  .assinatura-bloco { text-align: center; width: 45%; }
+  .assinatura-bloco img { max-height: 80px; display: block; margin: 0 auto 4px; }
+  .linha { border-top: 1px solid #1a1a1a; margin-top: 4px; padding-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>CONTRATO DE LOCAÇÃO DE EQUIPAMENTOS</h1>
+
+  <h2>1. Partes</h2>
+  <p><strong>LOCADORA:</strong> {{locadoraNome}}, CNPJ {{locadoraDocumento}}, com sede em {{locadoraEndereco}}.</p>
+  <p><strong>LOCATÁRIO(A):</strong> {{clienteNome}}, CPF/CNPJ {{clienteDocumento}}, telefone {{clienteTelefone}}, com endereço em {{clienteEndereco}}.</p>
+
+  <h2>2. Obra / Local de utilização</h2>
+  <p><strong>Obra:</strong> {{obraNome}} — {{obraEndereco}}</p>
+
+  <h2>3. Equipamentos locados</h2>
+  <table>
+    <thead>
+      <tr><th>Equipamento</th><th>Patrimônio</th><th>Valor diária (R$)</th><th>Dias</th><th>Subtotal (R$)</th></tr>
+    </thead>
+    <tbody>
+      {{linhasEquipamentos}}
+    </tbody>
+  </table>
+  <p><strong>Valor total do contrato: R$ {{valorTotal}}</strong></p>
+
+  <h2>4. Cláusulas gerais</h2>
+  <div class="clausulas">
+    <p>4.1. O(A) LOCATÁRIO(A) declara ter recebido os equipamentos acima descritos em perfeito estado de funcionamento, comprometendo-se a devolvê-los nas mesmas condições, ressalvado o desgaste natural de uso.</p>
+    <p>4.2. O período de locação de cada equipamento inicia-se na data de entrega, comprovada por registro fotográfico georreferenciado, e se encerra na data de devolução.</p>
+    <p>4.3. Em caso de dano, extravio ou uso inadequado dos equipamentos, o(a) LOCATÁRIO(A) arcará com os custos de reparo ou reposição pelo valor de mercado.</p>
+    <p>4.4. O pagamento deverá ser efetuado conforme condições acordadas entre as partes previamente à assinatura deste contrato.</p>
+    <p>4.5. Este contrato é celebrado eletronicamente, com assinatura digital do(a) LOCATÁRIO(A) capturada no momento da confirmação, tendo validade entre as partes.</p>
+  </div>
+
+  <div class="assinaturas">
+    <div class="assinatura-bloco">
+      <div class="linha">{{locadoraNome}} (Locadora)</div>
+    </div>
+    <div class="assinatura-bloco">
+      <img src="{{assinaturaImagemSrc}}" alt="Assinatura do locatário" />
+      <div class="linha">{{clienteNome}} (Locatário) — assinado em {{dataAssinatura}}</div>
+    </div>
+  </div>
+</body>
+</html>
