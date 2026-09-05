@@ -24,6 +24,8 @@ export interface Equipamento {
   fotoPath?: string | null;
 }
 
+export const STATUS_EQUIPAMENTO = ["DISPONIVEL", "LOCADO", "MANUTENCAO"] as const;
+
 export interface ItemContrato {
   id: string;
   valorDiaria: number;

@@ -105,6 +105,65 @@ describe("Equipamentos", () => {
       .set("Authorization", `Bearer ${token}`);
     expect(foto.status).toBe(200);
   });
+
+  it("cria várias unidades de uma vez quando quantidade > 1, cada uma com patrimônio próprio", async () => {
+    const token = await criarStaffELogar();
+    const base = `PAT-LOTE-${Date.now()}`;
+
+    const resposta = await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ nome: "Martelete", categoria: "Martelete", numeroPatrimonio: base, quantidade: 3 });
+
+    expect(resposta.status).toBe(201);
+    expect(resposta.body).toHaveLength(3);
+    expect(resposta.body.map((e: { numeroPatrimonio: string }) => e.numeroPatrimonio)).toEqual([
+      `${base}-1`,
+      `${base}-2`,
+      `${base}-3`,
+    ]);
+  });
+
+  it("permite editar nome, categoria, patrimônio e status de um equipamento existente", async () => {
+    const token = await criarStaffELogar();
+
+    const criacao = await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ nome: "Serra", categoria: "Serra", numeroPatrimonio: `PAT-EDIT-${Date.now()}` });
+
+    const edicao = await request(app)
+      .patch(`/equipamentos/${criacao.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ nome: "Serra Mármore", categoria: "Serra de mármore", status: "MANUTENCAO" });
+
+    expect(edicao.status).toBe(200);
+    expect(edicao.body.nome).toBe("Serra Mármore");
+    expect(edicao.body.categoria).toBe("Serra de mármore");
+    expect(edicao.body.status).toBe("MANUTENCAO");
+  });
+
+  it("rejeita edição de patrimônio para um valor já usado por outro equipamento", async () => {
+    const token = await criarStaffELogar();
+    const patrimonioExistente = `PAT-EXISTENTE-${Date.now()}`;
+
+    await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ nome: "Container", categoria: "Container", numeroPatrimonio: patrimonioExistente });
+
+    const outro = await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ nome: "Container", categoria: "Container", numeroPatrimonio: `PAT-OUTRO-${Date.now()}` });
+
+    const edicao = await request(app)
+      .patch(`/equipamentos/${outro.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ numeroPatrimonio: patrimonioExistente });
+
+    expect(edicao.status).toBe(409);
+  });
 });
 
 describe("Fluxo completo de contrato e entrega", () => {

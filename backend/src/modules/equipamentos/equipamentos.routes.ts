@@ -13,6 +13,7 @@ const criarEquipamentoSchema = z.object({
   nome: z.string().min(1),
   categoria: z.string().min(1),
   numeroPatrimonio: z.string().min(1),
+  quantidade: z.coerce.number().int().min(1).max(100).default(1),
 });
 
 equipamentosRouter.post(
@@ -22,17 +23,35 @@ equipamentosRouter.post(
   async (req, res) => {
     const dados = criarEquipamentoSchema.parse(req.body);
 
-    const existente = await prisma.equipamento.findUnique({
-      where: { numeroPatrimonio: dados.numeroPatrimonio },
+    const codigosDesejados =
+      dados.quantidade === 1
+        ? [dados.numeroPatrimonio]
+        : Array.from({ length: dados.quantidade }, (_, i) => `${dados.numeroPatrimonio}-${i + 1}`);
+
+    const existentes = await prisma.equipamento.findMany({
+      where: { numeroPatrimonio: { in: codigosDesejados } },
+      select: { numeroPatrimonio: true },
     });
-    if (existente) {
-      return res.status(409).json({ erro: "Número de patrimônio já cadastrado" });
+    if (existentes.length > 0) {
+      return res.status(409).json({
+        erro: `Número(s) de patrimônio já cadastrado(s): ${existentes.map((e) => e.numeroPatrimonio).join(", ")}`,
+      });
     }
 
-    const equipamento = await prisma.equipamento.create({
-      data: { ...dados, fotoPath: req.file?.path },
-    });
-    res.status(201).json(equipamento);
+    const criados = await prisma.$transaction(
+      codigosDesejados.map((numeroPatrimonio) =>
+        prisma.equipamento.create({
+          data: {
+            nome: dados.nome,
+            categoria: dados.categoria,
+            numeroPatrimonio,
+            fotoPath: req.file?.path,
+          },
+        })
+      )
+    );
+
+    res.status(201).json(dados.quantidade === 1 ? criados[0] : criados);
   }
 );
 
@@ -62,6 +81,46 @@ equipamentosRouter.get("/:id/foto", async (req, res) => {
   }
   res.sendFile(equipamento.fotoPath);
 });
+
+const editarEquipamentoSchema = z.object({
+  nome: z.string().min(1).optional(),
+  categoria: z.string().min(1).optional(),
+  numeroPatrimonio: z.string().min(1).optional(),
+  status: z.enum(["DISPONIVEL", "LOCADO", "MANUTENCAO"]).optional(),
+});
+
+equipamentosRouter.patch(
+  "/:id",
+  exigirPapel("STAFF"),
+  uploadFotoEquipamento.single("foto"),
+  async (req, res) => {
+    const dados = editarEquipamentoSchema.parse(req.body);
+
+    const equipamentoAtual = await prisma.equipamento.findUnique({ where: { id: req.params.id } });
+    if (!equipamentoAtual) return res.status(404).json({ erro: "Equipamento não encontrado" });
+
+    if (dados.numeroPatrimonio && dados.numeroPatrimonio !== equipamentoAtual.numeroPatrimonio) {
+      const existente = await prisma.equipamento.findUnique({
+        where: { numeroPatrimonio: dados.numeroPatrimonio },
+      });
+      if (existente) {
+        return res.status(409).json({ erro: "Número de patrimônio já cadastrado" });
+      }
+    }
+
+    const fotoAnterior = equipamentoAtual.fotoPath;
+    const equipamento = await prisma.equipamento.update({
+      where: { id: req.params.id },
+      data: { ...dados, ...(req.file ? { fotoPath: req.file.path } : {}) },
+    });
+
+    if (req.file && fotoAnterior && fs.existsSync(fotoAnterior)) {
+      fs.unlink(fotoAnterior, () => {});
+    }
+
+    res.json(equipamento);
+  }
+);
 
 equipamentosRouter.patch("/:id/status", exigirPapel("STAFF"), async (req, res) => {
   const schema = z.object({
