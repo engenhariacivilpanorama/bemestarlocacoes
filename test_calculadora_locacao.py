@@ -19,3 +19,8 @@ def test_valor_diaria_negativo_gera_erro():
 def test_dias_negativo_gera_erro():
     with pytest.raises(ValueError):
         calcular_valor_total(100, -5)
+
+
+def test_desconto_fora_do_intervalo_gera_erro():
+    with pytest.raises(ValueError):
+        calcular_valor_total(100, 5, desconto_percentual=101)
