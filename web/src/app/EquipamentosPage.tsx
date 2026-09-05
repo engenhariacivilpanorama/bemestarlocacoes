@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "../lib/api";
 import { STATUS_EQUIPAMENTO, type Equipamento } from "../lib/tipos";
 import { FotoAutenticada } from "../components/FotoAutenticada";
@@ -27,13 +27,38 @@ export function EquipamentosPage() {
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const inputFotoEdicaoRef = useRef<HTMLInputElement>(null);
 
-  function carregar() {
-    api<Equipamento[]>("/equipamentos")
-      .then(setEquipamentos)
-      .catch(() => setErro("Não foi possível carregar os equipamentos"));
+  const [abaAtiva, setAbaAtiva] = useState<string | null>(null);
+
+  async function carregar() {
+    try {
+      const dados = await api<Equipamento[]>("/equipamentos");
+      setEquipamentos(dados);
+      return dados;
+    } catch {
+      setErro("Não foi possível carregar os equipamentos");
+      return [];
+    }
   }
 
-  useEffect(carregar, []);
+  useEffect(() => {
+    carregar();
+  }, []);
+
+  const categorias = useMemo(() => {
+    const unicas = Array.from(new Set(equipamentos.map((e) => e.categoria)));
+    return unicas.sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [equipamentos]);
+
+  useEffect(() => {
+    if (abaAtiva && !categorias.includes(abaAtiva)) {
+      setAbaAtiva(null);
+    }
+    if (!abaAtiva && categorias.length > 0) {
+      setAbaAtiva(categorias[0]);
+    }
+  }, [categorias, abaAtiva]);
+
+  const equipamentosDaAba = equipamentos.filter((e) => e.categoria === abaAtiva);
 
   async function aoCriar(evento: FormEvent) {
     evento.preventDefault();
@@ -49,9 +74,11 @@ export function EquipamentosPage() {
       if (arquivo) formData.append("foto", arquivo);
 
       await api("/equipamentos", { method: "POST", body: formData, isFormData: true });
+      const categoriaCriada = form.categoria;
       setForm({ nome: "", categoria: "", numeroPatrimonio: "", quantidade: "1" });
       if (inputFotoRef.current) inputFotoRef.current.value = "";
-      carregar();
+      await carregar();
+      setAbaAtiva(categoriaCriada);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível cadastrar o equipamento");
     } finally {
@@ -91,8 +118,10 @@ export function EquipamentosPage() {
       if (arquivo) formData.append("foto", arquivo);
 
       await api(`/equipamentos/${editandoId}`, { method: "PATCH", body: formData, isFormData: true });
+      const categoriaEditada = formEdicao.categoria;
       cancelarEdicao();
-      carregar();
+      await carregar();
+      setAbaAtiva(categoriaEditada);
     } catch (e) {
       setErroEdicao(e instanceof ApiError ? e.message : "Não foi possível salvar as alterações");
     } finally {
@@ -112,7 +141,17 @@ export function EquipamentosPage() {
         </div>
         <div className="form-grupo">
           <label>Categoria</label>
-          <input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} required />
+          <input
+            value={form.categoria}
+            onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+            list="categorias-existentes"
+            required
+          />
+          <datalist id="categorias-existentes">
+            {categorias.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </div>
         <div className="form-grupo">
           <label>Número de patrimônio {Number(form.quantidade) > 1 && "(usado como prefixo: ex. PAT-1, PAT-2...)"}</label>
@@ -158,6 +197,7 @@ export function EquipamentosPage() {
             <input
               value={formEdicao.categoria}
               onChange={(e) => setFormEdicao({ ...formEdicao, categoria: e.target.value })}
+              list="categorias-existentes"
               required
             />
           </div>
@@ -196,20 +236,56 @@ export function EquipamentosPage() {
         </form>
       )}
 
+      {erro && !editandoId && categorias.length === 0 && <p className="erro">{erro}</p>}
+
+      {categorias.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 4,
+            overflowX: "auto",
+            borderBottom: "1px solid var(--cor-borda)",
+            marginBottom: 12,
+          }}
+        >
+          {categorias.map((categoria) => {
+            const quantidadeNaCategoria = equipamentos.filter((e) => e.categoria === categoria).length;
+            const ativa = categoria === abaAtiva;
+            return (
+              <button
+                key={categoria}
+                type="button"
+                onClick={() => setAbaAtiva(categoria)}
+                style={{
+                  background: "transparent",
+                  color: ativa ? "var(--cor-primaria)" : "#555",
+                  borderRadius: 0,
+                  borderBottom: ativa ? "2px solid var(--cor-primaria)" : "2px solid transparent",
+                  padding: "8px 14px",
+                  fontWeight: ativa ? 700 : 500,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {categoria} ({quantidadeNaCategoria})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="cartao">
         <table>
           <thead>
             <tr>
               <th>Foto</th>
               <th>Nome</th>
-              <th>Categoria</th>
               <th>Patrimônio</th>
               <th>Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {equipamentos.map((equipamento) => (
+            {equipamentosDaAba.map((equipamento) => (
               <tr key={equipamento.id}>
                 <td>
                   {equipamento.fotoPath && (
@@ -217,7 +293,6 @@ export function EquipamentosPage() {
                   )}
                 </td>
                 <td>{equipamento.nome}</td>
-                <td>{equipamento.categoria}</td>
                 <td>{equipamento.numeroPatrimonio}</td>
                 <td>
                   <span className={`badge ${classeBadge(equipamento.status)}`}>{equipamento.status}</span>
@@ -229,9 +304,9 @@ export function EquipamentosPage() {
                 </td>
               </tr>
             ))}
-            {equipamentos.length === 0 && (
+            {categorias.length === 0 && (
               <tr>
-                <td colSpan={6}>Nenhum equipamento cadastrado ainda.</td>
+                <td colSpan={5}>Nenhum equipamento cadastrado ainda.</td>
               </tr>
             )}
           </tbody>
