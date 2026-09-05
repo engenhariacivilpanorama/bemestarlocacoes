@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../../lib/prisma";
-import { exigirAutenticacao, exigirPapel } from "../../middleware/auth";
+import { exigirAutenticacao, exigirPapel, PAPEIS_STAFF } from "../../middleware/auth";
 
 export const clientesRouter = Router();
 
-clientesRouter.use(exigirAutenticacao, exigirPapel("STAFF"));
+clientesRouter.use(exigirAutenticacao, exigirPapel(...PAPEIS_STAFF));
 
 clientesRouter.get("/", async (_req, res) => {
   const clientes = await prisma.cliente.findMany({

@@ -11,7 +11,7 @@ export function LoginPage() {
   const [enviando, setEnviando] = useState(false);
 
   if (usuario) {
-    return <Navigate to={usuario.papel === "STAFF" ? "/app" : "/portal"} replace />;
+    return <Navigate to={usuario.papel === "CLIENTE" ? "/portal" : "/app"} replace />;
   }
 
   async function aoEnviar(evento: FormEvent) {

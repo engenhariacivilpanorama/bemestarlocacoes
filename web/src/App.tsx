@@ -9,6 +9,8 @@ import { ObrasPage } from "./app/ObrasPage";
 import { EquipamentosPage } from "./app/EquipamentosPage";
 import { ContratosPage } from "./app/ContratosPage";
 import { ContratoDetalhePage } from "./app/ContratoDetalhePage";
+import { UsuariosPage } from "./app/UsuariosPage";
+import { MinhaSenhaPage } from "./app/MinhaSenhaPage";
 import { LayoutPortal } from "./portal/LayoutPortal";
 import { PortalHomePage } from "./portal/PortalHomePage";
 import { ContratoAssinarPage } from "./portal/ContratoAssinarPage";
@@ -25,7 +27,7 @@ export default function App() {
           <Route
             path="/app"
             element={
-              <RotaProtegida papel="STAFF">
+              <RotaProtegida papeis={["ADMIN", "FUNCIONARIO"]}>
                 <LayoutStaff />
               </RotaProtegida>
             }
@@ -36,12 +38,21 @@ export default function App() {
             <Route path="equipamentos" element={<EquipamentosPage />} />
             <Route path="contratos" element={<ContratosPage />} />
             <Route path="contratos/:id" element={<ContratoDetalhePage />} />
+            <Route path="minha-senha" element={<MinhaSenhaPage />} />
+            <Route
+              path="usuarios"
+              element={
+                <RotaProtegida papeis={["ADMIN"]}>
+                  <UsuariosPage />
+                </RotaProtegida>
+              }
+            />
           </Route>
 
           <Route
             path="/portal"
             element={
-              <RotaProtegida papel="CLIENTE">
+              <RotaProtegida papeis={["CLIENTE"]}>
                 <LayoutPortal />
               </RotaProtegida>
             }

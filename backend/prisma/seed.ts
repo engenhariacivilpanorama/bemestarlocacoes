@@ -18,7 +18,7 @@ async function main() {
       nome: "Administrador",
       email: emailStaff,
       senhaHash,
-      papel: "STAFF",
+      papel: "ADMIN",
     },
   });
 

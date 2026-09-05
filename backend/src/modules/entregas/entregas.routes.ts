@@ -2,12 +2,12 @@ import { Router } from "express";
 import fs from "fs";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
-import { exigirAutenticacao, exigirPapel, RequestAutenticado } from "../../middleware/auth";
+import { exigirAutenticacao, exigirPapel, RequestAutenticado, PAPEIS_STAFF } from "../../middleware/auth";
 import { uploadFotoEntrega } from "./upload";
 
 export const entregasRouter = Router();
 
-entregasRouter.use(exigirAutenticacao, exigirPapel("STAFF"));
+entregasRouter.use(exigirAutenticacao, exigirPapel(...PAPEIS_STAFF));
 
 entregasRouter.get("/pendentes", async (_req, res) => {
   const pendentes = await prisma.contratoEquipamento.findMany({

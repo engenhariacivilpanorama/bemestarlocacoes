@@ -13,6 +13,8 @@ export function LayoutStaff() {
           <Link to="/app/obras">Obras</Link>
           <Link to="/app/equipamentos">Equipamentos</Link>
           <Link to="/app/contratos">Contratos</Link>
+          {usuario?.papel === "ADMIN" && <Link to="/app/usuarios">Funcionários</Link>}
+          <Link to="/app/minha-senha">Minha senha</Link>
         </nav>
         <div>
           {usuario?.nome} · <button className="secundario" onClick={logout}>Sair</button>

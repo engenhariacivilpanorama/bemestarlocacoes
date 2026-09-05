@@ -71,7 +71,11 @@ authRouter.post("/login", async (req, res) => {
     return res.status(401).json({ erro: "Credenciais inválidas" });
   }
 
-  const papel = usuario.papel as "STAFF" | "CLIENTE";
+  if (!usuario.ativo) {
+    return res.status(401).json({ erro: "Esta conta está desativada" });
+  }
+
+  const papel = usuario.papel as "ADMIN" | "FUNCIONARIO" | "CLIENTE";
   const token = assinarToken({ usuarioId: usuario.id, papel });
   res.json({
     token,

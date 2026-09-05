@@ -9,15 +9,15 @@ jest.mock("../modules/contratos/gerarPdf", () => ({
 
 const app = criarApp();
 
-async function criarStaffELogar() {
+async function criarStaffELogar(papel: "ADMIN" | "FUNCIONARIO" = "ADMIN") {
   const email = `staff-${Date.now()}-${Math.random()}@teste.com`;
   const senhaHash = await bcrypt.hash("senha123", 10);
-  await prisma.usuario.create({
-    data: { nome: "Staff Teste", email, senhaHash, papel: "STAFF" },
+  const usuario = await prisma.usuario.create({
+    data: { nome: "Staff Teste", email, senhaHash, papel },
   });
 
   const resposta = await request(app).post("/auth/login").send({ email, senha: "senha123" });
-  return resposta.body.token as string;
+  return { token: resposta.body.token as string, id: usuario.id, email };
 }
 
 async function registrarCliente() {
@@ -58,7 +58,7 @@ describe("Autenticação", () => {
 
 describe("Equipamentos", () => {
   it("staff pode cadastrar equipamento, e patrimônio duplicado é rejeitado", async () => {
-    const token = await criarStaffELogar();
+    const { token } = await criarStaffELogar();
     const patrimonio = `PAT-${Date.now()}`;
 
     const primeiraCriacao = await request(app)
@@ -87,7 +87,7 @@ describe("Equipamentos", () => {
   });
 
   it("aceita uma foto opcional e a disponibiliza para download autenticado", async () => {
-    const token = await criarStaffELogar();
+    const { token } = await criarStaffELogar();
 
     const criacao = await request(app)
       .post("/equipamentos")
@@ -107,7 +107,7 @@ describe("Equipamentos", () => {
   });
 
   it("cria várias unidades de uma vez quando quantidade > 1, cada uma com patrimônio próprio", async () => {
-    const token = await criarStaffELogar();
+    const { token } = await criarStaffELogar();
     const base = `PAT-LOTE-${Date.now()}`;
 
     const resposta = await request(app)
@@ -125,7 +125,7 @@ describe("Equipamentos", () => {
   });
 
   it("permite editar nome, categoria, patrimônio e status de um equipamento existente", async () => {
-    const token = await criarStaffELogar();
+    const { token } = await criarStaffELogar();
 
     const criacao = await request(app)
       .post("/equipamentos")
@@ -144,7 +144,7 @@ describe("Equipamentos", () => {
   });
 
   it("rejeita edição de patrimônio para um valor já usado por outro equipamento", async () => {
-    const token = await criarStaffELogar();
+    const { token } = await criarStaffELogar();
     const patrimonioExistente = `PAT-EXISTENTE-${Date.now()}`;
 
     await request(app)
@@ -166,9 +166,123 @@ describe("Equipamentos", () => {
   });
 });
 
+describe("Usuários (admin)", () => {
+  it("admin pode cadastrar um funcionário, que consegue logar e usar rotas de staff", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const email = `funcionario-${Date.now()}@teste.com`;
+
+    const criacao = await request(app)
+      .post("/usuarios")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ nome: "Funcionário Teste", email, senha: "senha123", papel: "FUNCIONARIO" });
+    expect(criacao.status).toBe(201);
+    expect(criacao.body.senhaHash).toBeUndefined();
+
+    const login = await request(app).post("/auth/login").send({ email, senha: "senha123" });
+    expect(login.status).toBe(200);
+    expect(login.body.usuario.papel).toBe("FUNCIONARIO");
+
+    const listaEquipamentos = await request(app)
+      .get("/equipamentos")
+      .set("Authorization", `Bearer ${login.body.token}`);
+    expect(listaEquipamentos.status).toBe(200);
+  });
+
+  it("funcionário comum não pode cadastrar outros usuários", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const email = `funcionario2-${Date.now()}@teste.com`;
+    await request(app)
+      .post("/usuarios")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ nome: "Funcionário 2", email, senha: "senha123", papel: "FUNCIONARIO" });
+
+    const loginFuncionario = await request(app).post("/auth/login").send({ email, senha: "senha123" });
+
+    const tentativa = await request(app)
+      .post("/usuarios")
+      .set("Authorization", `Bearer ${loginFuncionario.body.token}`)
+      .send({ nome: "Outro", email: `outro-${Date.now()}@teste.com`, senha: "senha123", papel: "FUNCIONARIO" });
+
+    expect(tentativa.status).toBe(403);
+  });
+
+  it("admin pode desativar um funcionário, que perde o acesso imediatamente", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const email = `funcionario3-${Date.now()}@teste.com`;
+    const criacao = await request(app)
+      .post("/usuarios")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ nome: "Funcionário 3", email, senha: "senha123", papel: "FUNCIONARIO" });
+
+    const login = await request(app).post("/auth/login").send({ email, senha: "senha123" });
+    const tokenFuncionario = login.body.token;
+
+    const desativacao = await request(app)
+      .patch(`/usuarios/${criacao.body.id}`)
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ ativo: false });
+    expect(desativacao.status).toBe(200);
+    expect(desativacao.body.ativo).toBe(false);
+
+    const acessoAposDesativar = await request(app)
+      .get("/equipamentos")
+      .set("Authorization", `Bearer ${tokenFuncionario}`);
+    expect(acessoAposDesativar.status).toBe(401);
+
+    const loginAposDesativar = await request(app).post("/auth/login").send({ email, senha: "senha123" });
+    expect(loginAposDesativar.status).toBe(401);
+  });
+
+  it("admin não pode desativar a própria conta", async () => {
+    const { token: tokenAdmin, id: idAdmin } = await criarStaffELogar("ADMIN");
+
+    const resposta = await request(app)
+      .patch(`/usuarios/${idAdmin}`)
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ ativo: false });
+
+    expect(resposta.status).toBe(400);
+  });
+
+  it("qualquer funcionário pode trocar a própria senha informando a senha atual", async () => {
+    const { token, email } = await criarStaffELogar("FUNCIONARIO");
+
+    const troca = await request(app)
+      .patch("/usuarios/me/senha")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ senhaAtual: "senha123", novaSenha: "novaSenha456" });
+    expect(troca.status).toBe(204);
+
+    const loginComNovaSenha = await request(app)
+      .post("/auth/login")
+      .send({ email, senha: "novaSenha456" });
+    expect(loginComNovaSenha.status).toBe(200);
+  });
+
+  it("admin pode redefinir a senha de um funcionário sem saber a senha atual", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const email = `funcionario4-${Date.now()}@teste.com`;
+    const criacao = await request(app)
+      .post("/usuarios")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ nome: "Funcionário 4", email, senha: "senha123", papel: "FUNCIONARIO" });
+
+    const redefinicao = await request(app)
+      .patch(`/usuarios/${criacao.body.id}/senha`)
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ novaSenha: "senhaRedefinida789" });
+    expect(redefinicao.status).toBe(204);
+
+    const login = await request(app)
+      .post("/auth/login")
+      .send({ email, senha: "senhaRedefinida789" });
+    expect(login.status).toBe(200);
+  });
+});
+
 describe("Fluxo completo de contrato e entrega", () => {
   it("cria contrato, cliente assina, staff registra a entrega e o equipamento fica LOCADO", async () => {
-    const tokenStaff = await criarStaffELogar();
+    const { token: tokenStaff } = await criarStaffELogar();
 
     const respostaCliente = await registrarCliente();
     const tokenCliente = respostaCliente.body.token;
@@ -246,7 +360,7 @@ describe("Fluxo completo de contrato e entrega", () => {
   });
 
   it("não permite registrar entrega antes do contrato ser assinado", async () => {
-    const tokenStaff = await criarStaffELogar();
+    const { token: tokenStaff } = await criarStaffELogar();
     const respostaCliente = await registrarCliente();
     const clientePrisma = await prisma.cliente.findUnique({
       where: { usuarioId: respostaCliente.body.usuario.id },

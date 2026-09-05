@@ -22,7 +22,7 @@ cd backend
 npm install
 cp .env.example .env
 npx prisma db push
-npx ts-node prisma/seed.ts   # cria o usuário staff inicial (veja o e-mail/senha no terminal)
+npx ts-node prisma/seed.ts   # cria o usuário administrador inicial (veja o e-mail/senha no terminal)
 npm run dev                  # http://localhost:3333
 ```
 
@@ -42,9 +42,18 @@ npm run dev                  # http://localhost:5173
 ```
 
 - `/cadastro` — cadastro público de clientes
-- `/login` — acesso da equipe (staff) e dos clientes
-- `/app/*` — painel da equipe: clientes, obras, equipamentos, contratos
+- `/login` — acesso da equipe (admin/funcionário) e dos clientes
+- `/app/*` — painel da equipe: clientes, obras, equipamentos, contratos, minha senha
+- `/app/usuarios` — administração de funcionários (só para o papel Admin): cadastrar, editar, desativar/reativar e redefinir senha
 - `/portal/*` — área do cliente: revisar e assinar contratos
+
+### Papéis de usuário
+
+- **Admin**: acesso total, incluindo cadastrar/gerenciar outros funcionários (`/app/usuarios`)
+- **Funcionário**: acesso ao painel operacional (clientes, obras, equipamentos, contratos), mas não gerencia outros usuários
+- **Cliente**: acesso só ao portal (`/portal`), para revisar e assinar contratos
+
+O usuário criado pelo seed inicial é **Admin**. Só um Admin pode cadastrar novos funcionários (pela tela "Funcionários" no painel).
 
 ### Mobile (app de entrega em campo)
 

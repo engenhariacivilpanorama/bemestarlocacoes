@@ -8,7 +8,7 @@ datasource db {
 }
 
 // SQLite (usado em desenvolvimento) não suporta enums nativos do Prisma.
-// Os valores válidos ("STAFF"/"CLIENTE", "DISPONIVEL"/"LOCADO"/"MANUTENCAO",
+// Os valores válidos ("ADMIN"/"FUNCIONARIO"/"CLIENTE", "DISPONIVEL"/"LOCADO"/"MANUTENCAO",
 // "RASCUNHO"/"ASSINADO") são validados na camada de aplicação (zod), nas rotas.
 
 model Usuario {
@@ -17,6 +17,7 @@ model Usuario {
   email        String   @unique
   senhaHash    String
   papel        String
+  ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now())
 
   cliente      Cliente?

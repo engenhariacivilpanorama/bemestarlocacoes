@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
-import { exigirAutenticacao, exigirPapel, RequestAutenticado } from "../../middleware/auth";
+import { exigirAutenticacao, exigirPapel, RequestAutenticado, PAPEIS_STAFF } from "../../middleware/auth";
 
 export const obrasRouter = Router();
 
@@ -13,7 +13,7 @@ const criarObraSchema = z.object({
   clienteId: z.string().uuid(),
 });
 
-obrasRouter.post("/", exigirPapel("STAFF"), async (req, res) => {
+obrasRouter.post("/", exigirPapel(...PAPEIS_STAFF), async (req, res) => {
   const dados = criarObraSchema.parse(req.body);
   const obra = await prisma.obra.create({ data: dados });
   res.status(201).json(obra);

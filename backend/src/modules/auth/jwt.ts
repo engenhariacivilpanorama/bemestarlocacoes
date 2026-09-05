@@ -3,7 +3,7 @@ import { env } from "../../lib/env";
 
 export interface TokenPayload {
   usuarioId: string;
-  papel: "STAFF" | "CLIENTE";
+  papel: "ADMIN" | "FUNCIONARIO" | "CLIENTE";
 }
 
 export function assinarToken(payload: TokenPayload): string {

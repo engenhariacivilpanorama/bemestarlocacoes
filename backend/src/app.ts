@@ -8,6 +8,7 @@ import { obrasRouter } from "./modules/obras/obras.routes";
 import { equipamentosRouter } from "./modules/equipamentos/equipamentos.routes";
 import { contratosRouter } from "./modules/contratos/contratos.routes";
 import { entregasRouter } from "./modules/entregas/entregas.routes";
+import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 
 export function criarApp() {
   const app = express();
@@ -23,6 +24,7 @@ export function criarApp() {
   app.use("/equipamentos", equipamentosRouter);
   app.use("/contratos", contratosRouter);
   app.use("/entregas", entregasRouter);
+  app.use("/usuarios", usuariosRouter);
 
   const tratarErros: ErrorRequestHandler = (err, _req, res, _next) => {
     if (err instanceof ZodError) {

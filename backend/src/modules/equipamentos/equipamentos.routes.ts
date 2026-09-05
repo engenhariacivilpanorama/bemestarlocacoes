@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
-import { exigirAutenticacao, exigirPapel } from "../../middleware/auth";
+import { exigirAutenticacao, exigirPapel, PAPEIS_STAFF } from "../../middleware/auth";
 import { uploadFotoEquipamento } from "./upload";
 
 export const equipamentosRouter = Router();
@@ -18,7 +18,7 @@ const criarEquipamentoSchema = z.object({
 
 equipamentosRouter.post(
   "/",
-  exigirPapel("STAFF"),
+  exigirPapel(...PAPEIS_STAFF),
   uploadFotoEquipamento.single("foto"),
   async (req, res) => {
     const dados = criarEquipamentoSchema.parse(req.body);
@@ -91,7 +91,7 @@ const editarEquipamentoSchema = z.object({
 
 equipamentosRouter.patch(
   "/:id",
-  exigirPapel("STAFF"),
+  exigirPapel(...PAPEIS_STAFF),
   uploadFotoEquipamento.single("foto"),
   async (req, res) => {
     const dados = editarEquipamentoSchema.parse(req.body);
@@ -122,7 +122,7 @@ equipamentosRouter.patch(
   }
 );
 
-equipamentosRouter.patch("/:id/status", exigirPapel("STAFF"), async (req, res) => {
+equipamentosRouter.patch("/:id/status", exigirPapel(...PAPEIS_STAFF), async (req, res) => {
   const schema = z.object({
     status: z.enum(["DISPONIVEL", "LOCADO", "MANUTENCAO"]),
   });

@@ -3,7 +3,7 @@ import fs from "fs";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../lib/env";
-import { exigirAutenticacao, exigirPapel, RequestAutenticado } from "../../middleware/auth";
+import { exigirAutenticacao, exigirPapel, RequestAutenticado, PAPEIS_STAFF } from "../../middleware/auth";
 import { gerarPdfContrato } from "./gerarPdf";
 
 export const contratosRouter = Router();
@@ -24,7 +24,7 @@ const criarContratoSchema = z.object({
     .min(1),
 });
 
-contratosRouter.post("/", exigirPapel("STAFF"), async (req, res) => {
+contratosRouter.post("/", exigirPapel(...PAPEIS_STAFF), async (req, res) => {
   const dados = criarContratoSchema.parse(req.body);
 
   const contrato = await prisma.contrato.create({
@@ -57,7 +57,7 @@ async function buscarContratoCompleto(id: string) {
 }
 
 async function podeAcessarContrato(req: RequestAutenticado, contrato: NonNullable<Awaited<ReturnType<typeof buscarContratoCompleto>>>) {
-  if (req.usuario?.papel === "STAFF") return true;
+  if (req.usuario && (PAPEIS_STAFF as readonly string[]).includes(req.usuario.papel)) return true;
   const cliente = await prisma.cliente.findUnique({
     where: { usuarioId: req.usuario!.usuarioId },
   });

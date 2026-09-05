@@ -1,19 +1,19 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
-import { useAuth } from "../lib/auth";
+import { useAuth, type Usuario } from "../lib/auth";
 
 export function RotaProtegida({
   children,
-  papel,
+  papeis,
 }: {
   children: ReactNode;
-  papel: "STAFF" | "CLIENTE";
+  papeis: Usuario["papel"][];
 }) {
   const { usuario, carregando } = useAuth();
 
   if (carregando) return <p>Carregando…</p>;
   if (!usuario) return <Navigate to="/login" replace />;
-  if (usuario.papel !== papel) return <Navigate to="/" replace />;
+  if (!papeis.includes(usuario.papel)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

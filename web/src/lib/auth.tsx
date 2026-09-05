@@ -5,7 +5,7 @@ export interface Usuario {
   id: string;
   nome: string;
   email: string;
-  papel: "STAFF" | "CLIENTE";
+  papel: "ADMIN" | "FUNCIONARIO" | "CLIENTE";
 }
 
 interface AuthContextValue {

@@ -26,6 +26,15 @@ export interface Equipamento {
 
 export const STATUS_EQUIPAMENTO = ["DISPONIVEL", "LOCADO", "MANUTENCAO"] as const;
 
+export interface UsuarioStaff {
+  id: string;
+  nome: string;
+  email: string;
+  papel: "ADMIN" | "FUNCIONARIO";
+  ativo: boolean;
+  criadoEm: string;
+}
+
 export interface ItemContrato {
   id: string;
   valorDiaria: number;
