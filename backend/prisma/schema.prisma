@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite (usado em desenvolvimento) não suporta enums nativos do Prisma.
+// Os valores válidos ("ADMIN"/"FUNCIONARIO"/"CLIENTE", "DISPONIVEL"/"LOCADO"/"MANUTENCAO",
+// "RASCUNHO"/"ASSINADO"/"ENCERRADO") são validados na camada de aplicação (zod), nas rotas.
+
+model Usuario {
+  id           String   @id @default(uuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  papel        String
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+
+  cliente      Cliente?
+  entregas     Entrega[] @relation("EntreguePor")
+}
+
+model Cliente {
+  id          String   @id @default(uuid())
+  usuarioId   String   @unique
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  documento   String
+  telefone    String
+  endereco    String
+
+  obras       Obra[]
+  contratos   Contrato[]
+}
+
+model Obra {
+  id        String   @id @default(uuid())
+  nome      String
+  endereco  String
+  status    String   @default("ATIVA")
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  criadoEm  DateTime @default(now())
+
+  contratos Contrato[]
+}
+
+model Equipamento {
+  id               String            @id @default(uuid())
+  nome             String
+  categoria        String
+  numeroPatrimonio String            @unique
+  status           String            @default("DISPONIVEL")
+  fotoPath         String?
+  criadoEm         DateTime          @default(now())
+
+  itensContrato    ContratoEquipamento[]
+}
+
+model Contrato {
+  id                String         @id @default(uuid())
+  clienteId         String
+  cliente           Cliente        @relation(fields: [clienteId], references: [id])
+  obraId            String
+  obra              Obra           @relation(fields: [obraId], references: [id])
+  status            String         @default("RASCUNHO")
+  prorrogacaoAutomatica Boolean    @default(false)
+  dadosPreenchidos  String?
+  assinaturaImagem  String?
+  pdfPath           String?
+  criadoEm          DateTime       @default(now())
+  assinadoEm        DateTime?
+  encerradoEm       DateTime?
+
+  itens             ContratoEquipamento[]
+}
+
+model ContratoEquipamento {
+  id             String      @id @default(uuid())
+  contratoId     String
+  contrato       Contrato    @relation(fields: [contratoId], references: [id])
+  equipamentoId  String
+  equipamento    Equipamento @relation(fields: [equipamentoId], references: [id])
+  valorDiaria    Float
+  dias           Int
+
+  entrega        Entrega?
+
+  @@unique([contratoId, equipamentoId])
+}
+
+model Entrega {
+  id                     String              @id @default(uuid())
+  contratoEquipamentoId  String              @unique
+  contratoEquipamento    ContratoEquipamento @relation(fields: [contratoEquipamentoId], references: [id])
+  entreguePorUsuarioId   String
+  entreguePor            Usuario             @relation("EntreguePor", fields: [entreguePorUsuarioId], references: [id])
+  dataHora               DateTime            @default(now())
+  latitude               Float
+  longitude              Float
+  fotoPath               String
+  observacoes            String?
+}
