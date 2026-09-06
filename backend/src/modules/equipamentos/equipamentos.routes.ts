@@ -10,9 +10,9 @@ export const equipamentosRouter = Router();
 equipamentosRouter.use(exigirAutenticacao);
 
 const criarEquipamentoSchema = z.object({
-  nome: z.string().min(1),
-  categoria: z.string().min(1),
-  numeroPatrimonio: z.string().min(1),
+  nome: z.string().trim().min(1),
+  categoria: z.string().trim().min(1),
+  numeroPatrimonio: z.string().trim().min(1),
   quantidade: z.coerce.number().int().min(1).max(1000).default(1),
 });
 
@@ -83,9 +83,9 @@ equipamentosRouter.get("/:id/foto", async (req, res) => {
 });
 
 const editarEquipamentoSchema = z.object({
-  nome: z.string().min(1).optional(),
-  categoria: z.string().min(1).optional(),
-  numeroPatrimonio: z.string().min(1).optional(),
+  nome: z.string().trim().min(1).optional(),
+  categoria: z.string().trim().min(1).optional(),
+  numeroPatrimonio: z.string().trim().min(1).optional(),
   status: z.enum(["DISPONIVEL", "LOCADO", "MANUTENCAO"]).optional(),
 });
 

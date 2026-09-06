@@ -164,6 +164,23 @@ describe("Equipamentos", () => {
 
     expect(edicao.status).toBe(409);
   });
+
+  it("remove espaços extras de nome e categoria ao cadastrar", async () => {
+    const { token } = await criarStaffELogar();
+
+    const resposta = await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        nome: "  Furadeira  ",
+        categoria: " Furadeira ",
+        numeroPatrimonio: `PAT-TRIM-${Date.now()}`,
+      });
+
+    expect(resposta.status).toBe(201);
+    expect(resposta.body.nome).toBe("Furadeira");
+    expect(resposta.body.categoria).toBe("Furadeira");
+  });
 });
 
 describe("Usuários (admin)", () => {

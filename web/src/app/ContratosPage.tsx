@@ -2,12 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { Cliente, Contrato, Equipamento, Obra } from "../lib/tipos";
-
-interface ItemForm {
-  equipamentoId: string;
-  valorDiaria: string;
-  dias: string;
-}
+import { SeletorEquipamentos, type ItemSelecionado } from "../components/SeletorEquipamentos";
 
 function classeBadge(status: Contrato["status"]) {
   return status === "ASSINADO" ? "assinado" : "rascunho";
@@ -21,7 +16,7 @@ export function ContratosPage() {
 
   const [clienteId, setClienteId] = useState("");
   const [obraId, setObraId] = useState("");
-  const [itens, setItens] = useState<ItemForm[]>([{ equipamentoId: "", valorDiaria: "", dias: "" }]);
+  const [itens, setItens] = useState<ItemSelecionado[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -31,48 +26,37 @@ export function ContratosPage() {
       .catch(() => setErro("Não foi possível carregar os contratos"));
   }
 
+  function carregarEquipamentos() {
+    api<Equipamento[]>("/equipamentos?status=DISPONIVEL").then(setEquipamentos).catch(() => {});
+  }
+
   useEffect(() => {
     carregarContratos();
     api<Cliente[]>("/clientes").then(setClientes).catch(() => {});
     api<Obra[]>("/obras").then(setObras).catch(() => {});
-    api<Equipamento[]>("/equipamentos?status=DISPONIVEL").then(setEquipamentos).catch(() => {});
+    carregarEquipamentos();
   }, []);
 
   const obrasDoCliente = obras.filter((o) => o.clienteId === clienteId);
 
-  function atualizarItem(indice: number, campo: keyof ItemForm, valor: string) {
-    setItens((atual) => atual.map((item, i) => (i === indice ? { ...item, [campo]: valor } : item)));
-  }
-
-  function adicionarItem() {
-    setItens((atual) => [...atual, { equipamentoId: "", valorDiaria: "", dias: "" }]);
-  }
-
-  function removerItem(indice: number) {
-    setItens((atual) => atual.filter((_, i) => i !== indice));
-  }
-
   async function aoCriar(evento: FormEvent) {
     evento.preventDefault();
+    if (itens.length === 0) {
+      setErro("Selecione ao menos um equipamento");
+      return;
+    }
     setErro(null);
     setEnviando(true);
     try {
       await api("/contratos", {
         method: "POST",
-        body: {
-          clienteId,
-          obraId,
-          itens: itens.map((item) => ({
-            equipamentoId: item.equipamentoId,
-            valorDiaria: Number(item.valorDiaria),
-            dias: Number(item.dias),
-          })),
-        },
+        body: { clienteId, obraId, itens },
       });
       setClienteId("");
       setObraId("");
-      setItens([{ equipamentoId: "", valorDiaria: "", dias: "" }]);
+      setItens([]);
       carregarContratos();
+      carregarEquipamentos();
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Não foi possível criar o contrato");
     } finally {
@@ -111,58 +95,10 @@ export function ContratosPage() {
         </div>
 
         <h3>Equipamentos</h3>
-        {itens.map((item, indice) => (
-          <div key={indice} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-end" }}>
-            <div className="form-grupo" style={{ flex: 2 }}>
-              <label>Equipamento</label>
-              <select
-                value={item.equipamentoId}
-                onChange={(e) => atualizarItem(indice, "equipamentoId", e.target.value)}
-                required
-              >
-                <option value="">Selecione</option>
-                {equipamentos.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.nome} ({eq.numeroPatrimonio})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-grupo" style={{ flex: 1 }}>
-              <label>Valor diária (R$)</label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={item.valorDiaria}
-                onChange={(e) => atualizarItem(indice, "valorDiaria", e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-grupo" style={{ flex: 1 }}>
-              <label>Dias</label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={item.dias}
-                onChange={(e) => atualizarItem(indice, "dias", e.target.value)}
-                required
-              />
-            </div>
-            {itens.length > 1 && (
-              <button type="button" className="secundario" onClick={() => removerItem(indice)}>
-                Remover
-              </button>
-            )}
-          </div>
-        ))}
-        <button type="button" className="secundario" onClick={adicionarItem} style={{ marginBottom: 12 }}>
-          + Adicionar equipamento
-        </button>
+        <SeletorEquipamentos equipamentos={equipamentos} onChange={setItens} />
 
-        {erro && <p className="erro">{erro}</p>}
-        <div>
+        {erro && <p className="erro" style={{ marginTop: 12 }}>{erro}</p>}
+        <div style={{ marginTop: 12 }}>
           <button type="submit" disabled={enviando}>
             {enviando ? "Criando…" : "Criar contrato"}
           </button>
