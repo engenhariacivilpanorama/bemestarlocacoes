@@ -26,8 +26,16 @@ export function PortalHomePage() {
           <p><strong>Obra:</strong> {contrato.obra.nome}</p>
           <p>
             <strong>Status:</strong>{" "}
-            <span className={`badge ${contrato.status === "ASSINADO" ? "assinado" : "rascunho"}`}>
-              {contrato.status === "ASSINADO" ? "Assinado" : "Aguardando assinatura"}
+            <span
+              className={`badge ${
+                contrato.status === "ASSINADO" ? "assinado" : contrato.status === "ENCERRADO" ? "manutencao" : "rascunho"
+              }`}
+            >
+              {contrato.status === "ASSINADO"
+                ? "Assinado"
+                : contrato.status === "ENCERRADO"
+                  ? "Encerrado"
+                  : "Aguardando assinatura"}
             </span>
           </p>
           <p>{contrato.itens.length} equipamento(s)</p>

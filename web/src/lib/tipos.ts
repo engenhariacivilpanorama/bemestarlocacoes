@@ -45,9 +45,11 @@ export interface ItemContrato {
 
 export interface Contrato {
   id: string;
-  status: "RASCUNHO" | "ASSINADO";
+  status: "RASCUNHO" | "ASSINADO" | "ENCERRADO";
+  prorrogacaoAutomatica: boolean;
   criadoEm: string;
   assinadoEm?: string | null;
+  encerradoEm?: string | null;
   obra: Obra;
   cliente?: Cliente;
   itens: ItemContrato[];

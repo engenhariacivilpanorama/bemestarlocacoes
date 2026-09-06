@@ -21,6 +21,7 @@ export interface DadosContratoParaPdf {
   clienteEndereco: string;
   obraNome: string;
   obraEndereco: string;
+  prorrogacaoAutomatica: boolean;
   itens: ItemContratoParaPdf[];
   assinaturaImagemBase64: string;
   dataAssinatura: Date;
@@ -65,6 +66,12 @@ function montarHtml(dados: DadosContratoParaPdf): string {
     .replaceAll("{{obraEndereco}}", dados.obraEndereco)
     .replaceAll("{{linhasEquipamentos}}", linhasEquipamentos)
     .replaceAll("{{valorTotal}}", formatarMoeda(valorTotal))
+    .replaceAll(
+      "{{clausulaProrrogacao}}",
+      dados.prorrogacaoAutomatica
+        ? "4.6. Este contrato possui PRORROGAÇÃO AUTOMÁTICA autorizada pelo(a) LOCATÁRIO(A): a locação continua em vigor, sendo cobrada por dia adicional de uso, até que a LOCADORA registre o encerramento do contrato no sistema, momento em que a devolução dos equipamentos deverá estar confirmada."
+        : "4.6. Este contrato tem prazo fixo, encerrando-se automaticamente ao final do período de dias contratado para cada equipamento."
+    )
     .replaceAll("{{assinaturaImagemSrc}}", dados.assinaturaImagemBase64)
     .replaceAll("{{dataAssinatura}}", dados.dataAssinatura.toLocaleString("pt-BR"));
 }

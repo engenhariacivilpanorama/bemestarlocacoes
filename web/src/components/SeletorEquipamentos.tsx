@@ -25,9 +25,11 @@ interface SelecaoTipo {
 export function SeletorEquipamentos({
   equipamentos,
   onChange,
+  permitirDefinirPreco = true,
 }: {
   equipamentos: Equipamento[];
   onChange: (itens: ItemSelecionado[]) => void;
+  permitirDefinirPreco?: boolean;
 }) {
   const tipos = useMemo<Tipo[]>(() => {
     const mapa = new Map<string, Tipo>();
@@ -67,9 +69,9 @@ export function SeletorEquipamentos({
     for (const tipo of tipos) {
       const selecao = selecoes[tipo.chave];
       if (!selecao || selecao.quantidade <= 0) continue;
-      const valorDiaria = Number(selecao.valorDiaria);
+      const valorDiaria = permitirDefinirPreco ? Number(selecao.valorDiaria) : 0;
       const dias = Number(selecao.dias);
-      if (!valorDiaria || !dias) continue;
+      if ((permitirDefinirPreco && !valorDiaria) || !dias) continue;
       const idsEscolhidos = tipo.ids.slice(0, selecao.quantidade);
       for (const id of idsEscolhidos) {
         itens.push({ equipamentoId: id, valorDiaria, dias });
@@ -77,7 +79,7 @@ export function SeletorEquipamentos({
     }
     onChange(itens);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selecoes, tipos]);
+  }, [selecoes, tipos, permitirDefinirPreco]);
 
   function alterarQuantidade(tipo: Tipo, delta: number) {
     setSelecoes((atual) => {
@@ -187,17 +189,26 @@ export function SeletorEquipamentos({
 
               {selecionado && (
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <div className="form-grupo" style={{ flex: 1, marginBottom: 0 }}>
-                    <label style={{ fontSize: 11 }}>Valor diária (R$)</label>
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={selecao?.valorDiaria ?? ""}
-                      onChange={(e) => alterarCampo(tipo, "valorDiaria", e.target.value)}
-                      required
-                    />
-                  </div>
+                  {permitirDefinirPreco ? (
+                    <div className="form-grupo" style={{ flex: 1, marginBottom: 0 }}>
+                      <label style={{ fontSize: 11 }}>Valor diária (R$)</label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={selecao?.valorDiaria ?? ""}
+                        onChange={(e) => alterarCampo(tipo, "valorDiaria", e.target.value)}
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="form-grupo" style={{ flex: 1, marginBottom: 0 }}>
+                      <label style={{ fontSize: 11 }}>Valor diária</label>
+                      <div style={{ fontSize: 12, color: "#888", padding: "8px 0" }}>
+                        Definido por um admin depois
+                      </div>
+                    </div>
+                  )}
                   <div className="form-grupo" style={{ flex: 1, marginBottom: 0 }}>
                     <label style={{ fontSize: 11 }}>Dias</label>
                     <input

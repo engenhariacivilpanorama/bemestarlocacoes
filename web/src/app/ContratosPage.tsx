@@ -1,14 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import type { Cliente, Contrato, Equipamento, Obra } from "../lib/tipos";
 import { SeletorEquipamentos, type ItemSelecionado } from "../components/SeletorEquipamentos";
 
 function classeBadge(status: Contrato["status"]) {
-  return status === "ASSINADO" ? "assinado" : "rascunho";
+  if (status === "ASSINADO") return "assinado";
+  if (status === "ENCERRADO") return "manutencao";
+  return "rascunho";
 }
 
 export function ContratosPage() {
+  const { usuario } = useAuth();
+  const podeDefinirPreco = usuario?.papel === "ADMIN";
+
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -16,6 +22,7 @@ export function ContratosPage() {
 
   const [clienteId, setClienteId] = useState("");
   const [obraId, setObraId] = useState("");
+  const [prorrogacaoAutomatica, setProrrogacaoAutomatica] = useState(false);
   const [itens, setItens] = useState<ItemSelecionado[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -50,11 +57,12 @@ export function ContratosPage() {
     try {
       await api("/contratos", {
         method: "POST",
-        body: { clienteId, obraId, itens },
+        body: { clienteId, obraId, itens, prorrogacaoAutomatica },
       });
       setClienteId("");
       setObraId("");
       setItens([]);
+      setProrrogacaoAutomatica(false);
       carregarContratos();
       carregarEquipamentos();
     } catch (e) {
@@ -95,7 +103,28 @@ export function ContratosPage() {
         </div>
 
         <h3>Equipamentos</h3>
-        <SeletorEquipamentos equipamentos={equipamentos} onChange={setItens} />
+        {!podeDefinirPreco && (
+          <p style={{ fontSize: 13, color: "#888", marginTop: -8, marginBottom: 12 }}>
+            Você pode montar o contrato, mas o valor da diária só pode ser definido por um administrador.
+          </p>
+        )}
+        <SeletorEquipamentos
+          equipamentos={equipamentos}
+          onChange={setItens}
+          permitirDefinirPreco={podeDefinirPreco}
+        />
+
+        <div className="form-grupo" style={{ marginTop: 12 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
+            <input
+              type="checkbox"
+              checked={prorrogacaoAutomatica}
+              onChange={(e) => setProrrogacaoAutomatica(e.target.checked)}
+              style={{ width: "auto" }}
+            />
+            Autorizar prorrogação automática (o contrato continua ativo, cobrando por dia, até um administrador encerrá-lo no sistema)
+          </label>
+        </div>
 
         {erro && <p className="erro" style={{ marginTop: 12 }}>{erro}</p>}
         <div style={{ marginTop: 12 }}>

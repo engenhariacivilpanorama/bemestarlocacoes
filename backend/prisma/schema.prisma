@@ -9,7 +9,7 @@ datasource db {
 
 // SQLite (usado em desenvolvimento) não suporta enums nativos do Prisma.
 // Os valores válidos ("ADMIN"/"FUNCIONARIO"/"CLIENTE", "DISPONIVEL"/"LOCADO"/"MANUTENCAO",
-// "RASCUNHO"/"ASSINADO") são validados na camada de aplicação (zod), nas rotas.
+// "RASCUNHO"/"ASSINADO"/"ENCERRADO") são validados na camada de aplicação (zod), nas rotas.
 
 model Usuario {
   id           String   @id @default(uuid())
@@ -67,11 +67,13 @@ model Contrato {
   obraId            String
   obra              Obra           @relation(fields: [obraId], references: [id])
   status            String         @default("RASCUNHO")
+  prorrogacaoAutomatica Boolean    @default(false)
   dadosPreenchidos  String?
   assinaturaImagem  String?
   pdfPath           String?
   criadoEm          DateTime       @default(now())
   assinadoEm        DateTime?
+  encerradoEm       DateTime?
 
   itens             ContratoEquipamento[]
 }

@@ -62,17 +62,34 @@ export function ContratoAssinarPage() {
   if (erro && !contrato) return <p className="erro">{erro}</p>;
   if (!contrato) return <p>Carregando…</p>;
 
-  if (contrato.status === "ASSINADO") {
+  if (contrato.status === "ASSINADO" || contrato.status === "ENCERRADO") {
     return (
       <div className="cartao">
-        <h1>Contrato assinado</h1>
-        <p>Seu contrato para a obra <strong>{contrato.obra.nome}</strong> já foi assinado.</p>
+        <h1>{contrato.status === "ENCERRADO" ? "Contrato encerrado" : "Contrato assinado"}</h1>
+        <p>
+          Seu contrato para a obra <strong>{contrato.obra.nome}</strong>{" "}
+          {contrato.status === "ENCERRADO" ? "foi encerrado pela locadora." : "já foi assinado."}
+        </p>
         <button onClick={aoBaixarPdf} disabled={baixando}>
           {baixando ? "Baixando…" : "Baixar PDF do contrato"}
         </button>
         <div style={{ marginTop: 12 }}>
           <button className="secundario" onClick={() => navigate("/portal")}>Voltar</button>
         </div>
+      </div>
+    );
+  }
+
+  const precisaDePreco = contrato.itens.some((item) => item.valorDiaria <= 0);
+  if (precisaDePreco) {
+    return (
+      <div className="cartao">
+        <h1>Aguardando definição de valores</h1>
+        <p>
+          Este contrato para a obra <strong>{contrato.obra.nome}</strong> ainda está sendo preparado pela nossa
+          equipe. Assim que os valores forem definidos, você poderá revisá-lo e assiná-lo aqui.
+        </p>
+        <button className="secundario" onClick={() => navigate("/portal")}>Voltar</button>
       </div>
     );
   }
@@ -105,6 +122,11 @@ export function ContratoAssinarPage() {
           </tbody>
         </table>
         <p><strong>Valor total: R$ {valorTotal.toFixed(2)}</strong></p>
+        <p style={{ fontSize: 13, color: "#555" }}>
+          {contrato.prorrogacaoAutomatica
+            ? "Este contrato tem prorrogação automática: ele continua ativo, sendo cobrado por dia adicional de uso, até que a locadora registre o encerramento no sistema."
+            : "Este contrato tem prazo fixo, encerrando-se ao final do período de dias contratado para cada equipamento."}
+        </p>
       </div>
 
       <div className="cartao">

@@ -297,6 +297,115 @@ describe("Usuários (admin)", () => {
   });
 });
 
+describe("Preço da diária restrito ao admin e encerramento de contrato", () => {
+  async function prepararClienteObraEquipamento(tokenStaff: string) {
+    const respostaCliente = await registrarCliente();
+    const clientePrisma = await prisma.cliente.findUnique({
+      where: { usuarioId: respostaCliente.body.usuario.id },
+    });
+    const respostaObra = await request(app)
+      .post("/obras")
+      .set("Authorization", `Bearer ${tokenStaff}`)
+      .send({ nome: "Obra Preço", endereco: "Rua X", clienteId: clientePrisma!.id });
+    const respostaEquipamento = await request(app)
+      .post("/equipamentos")
+      .set("Authorization", `Bearer ${tokenStaff}`)
+      .send({ nome: "Andaime", categoria: "Andaime", numeroPatrimonio: `PAT-PRECO-${Date.now()}-${Math.random()}` });
+    return {
+      tokenCliente: respostaCliente.body.token as string,
+      clienteId: clientePrisma!.id as string,
+      obraId: respostaObra.body.id as string,
+      equipamentoId: respostaEquipamento.body.id as string,
+    };
+  }
+
+  it("ignora o valor da diária enviado por um funcionário, criando o item com preço zerado", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const { token: tokenFuncionario } = await criarStaffELogar("FUNCIONARIO");
+    const { clienteId, obraId, equipamentoId } = await prepararClienteObraEquipamento(tokenAdmin);
+
+    const resposta = await request(app)
+      .post("/contratos")
+      .set("Authorization", `Bearer ${tokenFuncionario}`)
+      .send({ clienteId, obraId, itens: [{ equipamentoId, valorDiaria: 999, dias: 5 }] });
+
+    expect(resposta.status).toBe(201);
+    expect(resposta.body.itens[0].valorDiaria).toBe(0);
+  });
+
+  it("não permite o cliente assinar enquanto o preço estiver pendente, e permite depois que o admin definir", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const { token: tokenFuncionario } = await criarStaffELogar("FUNCIONARIO");
+    const { tokenCliente, clienteId, obraId, equipamentoId } = await prepararClienteObraEquipamento(tokenAdmin);
+
+    const contrato = await request(app)
+      .post("/contratos")
+      .set("Authorization", `Bearer ${tokenFuncionario}`)
+      .send({ clienteId, obraId, itens: [{ equipamentoId, valorDiaria: 0, dias: 5 }] });
+
+    const tentativaAssinatura = await request(app)
+      .post(`/contratos/${contrato.body.id}/assinar`)
+      .set("Authorization", `Bearer ${tokenCliente}`)
+      .send({ dadosPreenchidos: {}, assinaturaImagemBase64: "data:image/png;base64,AAAA" });
+    expect(tentativaAssinatura.status).toBe(400);
+
+    const definicaoPorFuncionario = await request(app)
+      .patch(`/contratos/${contrato.body.id}/precos`)
+      .set("Authorization", `Bearer ${tokenFuncionario}`)
+      .send({ itens: [{ contratoEquipamentoId: contrato.body.itens[0].id, valorDiaria: 60 }] });
+    expect(definicaoPorFuncionario.status).toBe(403);
+
+    const definicaoPorAdmin = await request(app)
+      .patch(`/contratos/${contrato.body.id}/precos`)
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ itens: [{ contratoEquipamentoId: contrato.body.itens[0].id, valorDiaria: 60 }] });
+    expect(definicaoPorAdmin.status).toBe(200);
+
+    const assinaturaFinal = await request(app)
+      .post(`/contratos/${contrato.body.id}/assinar`)
+      .set("Authorization", `Bearer ${tokenCliente}`)
+      .send({ dadosPreenchidos: {}, assinaturaImagemBase64: "data:image/png;base64,AAAA" });
+    expect(assinaturaFinal.status).toBe(200);
+  });
+
+  it("só admin encerra o contrato, o que libera os equipamentos entregues", async () => {
+    const { token: tokenAdmin } = await criarStaffELogar("ADMIN");
+    const { token: tokenFuncionario } = await criarStaffELogar("FUNCIONARIO");
+    const { tokenCliente, clienteId, obraId, equipamentoId } = await prepararClienteObraEquipamento(tokenAdmin);
+
+    const contrato = await request(app)
+      .post("/contratos")
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .send({ clienteId, obraId, prorrogacaoAutomatica: true, itens: [{ equipamentoId, valorDiaria: 40, dias: 3 }] });
+
+    await request(app)
+      .post(`/contratos/${contrato.body.id}/assinar`)
+      .set("Authorization", `Bearer ${tokenCliente}`)
+      .send({ dadosPreenchidos: {}, assinaturaImagemBase64: "data:image/png;base64,AAAA" });
+
+    await request(app)
+      .post(`/entregas/${contrato.body.itens[0].id}`)
+      .set("Authorization", `Bearer ${tokenAdmin}`)
+      .field("latitude", "-23.5")
+      .field("longitude", "-46.6")
+      .attach("foto", Buffer.from("fake"), "foto.jpg");
+
+    const tentativaFuncionario = await request(app)
+      .post(`/contratos/${contrato.body.id}/encerrar`)
+      .set("Authorization", `Bearer ${tokenFuncionario}`);
+    expect(tentativaFuncionario.status).toBe(403);
+
+    const encerramento = await request(app)
+      .post(`/contratos/${contrato.body.id}/encerrar`)
+      .set("Authorization", `Bearer ${tokenAdmin}`);
+    expect(encerramento.status).toBe(200);
+    expect(encerramento.body.status).toBe("ENCERRADO");
+
+    const equipamentoAtualizado = await prisma.equipamento.findUnique({ where: { id: equipamentoId } });
+    expect(equipamentoAtualizado?.status).toBe("DISPONIVEL");
+  });
+});
+
 describe("Fluxo completo de contrato e entrega", () => {
   it("cria contrato, cliente assina, staff registra a entrega e o equipamento fica LOCADO", async () => {
     const { token: tokenStaff } = await criarStaffELogar();
