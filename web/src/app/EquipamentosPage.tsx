@@ -166,7 +166,7 @@ export function EquipamentosPage() {
           <input
             type="number"
             min={1}
-            max={100}
+            max={1000}
             value={form.quantidade}
             onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
           />

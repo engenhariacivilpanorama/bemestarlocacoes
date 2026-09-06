@@ -13,7 +13,7 @@ const criarEquipamentoSchema = z.object({
   nome: z.string().min(1),
   categoria: z.string().min(1),
   numeroPatrimonio: z.string().min(1),
-  quantidade: z.coerce.number().int().min(1).max(100).default(1),
+  quantidade: z.coerce.number().int().min(1).max(1000).default(1),
 });
 
 equipamentosRouter.post(
